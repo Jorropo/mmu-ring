@@ -93,7 +93,8 @@ func (r *Ring) Size() uintptr {
 	return r.size
 }
 
-// Unused returns a single contiguous slice of unused memory in the ring so you can pass it to .Read or whatever is gonna write to it.
+// Unused returns a single contiguous slice of unused memory in the ring so you can pass it to os.File.Read or whatever is gonna write to it.
+// It returns a byte slice that is only valid before calling Ring.Close, you should avoid retaining this slice and might need to manually nil it out before calling Close to avoid the GC attempting to scan unmapped memory.
 func (r *Ring) Unused() []byte {
 	return unsafe.Slice((*byte)(unsafe.Add(unsafe.Pointer(r.buffer), r.tail+r.contentLen)), int(r.freeSpace()))
 }
@@ -113,6 +114,7 @@ func (r *Ring) freeSpace() uintptr {
 }
 
 // Write is an alternative to Unused and Advance, you get called back with a reference to the unused buffer and return how many new bytes are there.
+// The passed-in slice is not valid once f returns.
 func (r *Ring) Write(f func(buffer []byte) (newData uintptr, err error)) (newData uintptr, err error) {
 	newData, err = f(r.Unused())
 	if err != nil {
@@ -125,6 +127,8 @@ func (r *Ring) Write(f func(buffer []byte) (newData uintptr, err error)) (newDat
 	return newData, nil
 }
 
+// Content returns a single contiguous slice of the content in the ring so you can pass it to os.File.Write or whatever is gonna read from it.
+// It returns a byte slice that is only valid before calling Ring.Close, you should avoid retaining this slice and might need to manually nil it out before calling Close to avoid the GC attempting to scan unmapped memory.
 func (r *Ring) Content() []byte {
 	return unsafe.Slice((*byte)(unsafe.Add(unsafe.Pointer(r.buffer), r.tail)), int(r.contentLen))
 }
@@ -140,6 +144,7 @@ func (r *Ring) Consume(n uintptr) error {
 }
 
 // Read is an alternative to Content and Consume, you get called back with a reference to the used buffer and return how many bytes you have consumed.
+// The passed-in slice is not valid once f returns.
 func (r *Ring) Read(f func(buffer []byte) (consumed uintptr, err error)) (consumed uintptr, err error) {
 	consumed, err = f(r.Content())
 	if err != nil {

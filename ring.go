@@ -77,6 +77,9 @@ func (r *Ring) Init(size uintptr) (err error) {
 	return nil
 }
 
+// Close frees up the mmaped memory and must be manually called before the Ring is garbage collected.
+// Very important, any buffer returned by .Context or .Unused, or leaked from .Write or .Read will become invalid and point to who knows what and cannot be used.
+// If you *retain* theses buffers, you might need to set them to nil before calling Close.
 func (r *Ring) Close() error {
 	if r.buffer == nil {
 		return nil

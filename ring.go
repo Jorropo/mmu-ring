@@ -81,12 +81,12 @@ func (r *Ring) Init(size uintptr) (err error) {
 // Very important, any buffer returned by .Context or .Unused, or leaked from .Write or .Read will become invalid and point to who knows what and cannot be used.
 // If you *retain* theses buffers, you might need to set them to nil before calling Close.
 func (r *Ring) Close() error {
-	if r.buffer == nil {
+	buf := r.buffer
+	if buf == nil {
 		return nil
 	}
-	err := unix.MunmapPtr(unsafe.Pointer(r.buffer), r.size*2)
 	r.buffer = nil
-	return err
+	return unix.MunmapPtr(unsafe.Pointer(buf), r.size*2)
 }
 
 func (r *Ring) Size() uintptr {
